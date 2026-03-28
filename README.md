@@ -89,7 +89,7 @@ pip install .
 ### Still having directory issues
 If `cd Qrcode-Generator` fails, try:
 ```bash
-cd python` qrcode` generator
+cd "Qrcode-Generator"
 ```
 
 ---
