@@ -29,7 +29,7 @@ cd Qrcode-Generator
 ### If there is an error while changing the directory
 Try this command exactly (as noted):
 ```bash
-cd python` qrcode` generator
+cd "Qrcode-Generator"
 ```
 
 > Note: The folder name must match the actual folder name on your machine. If it doesn’t, list folders and `cd` into the correct one.
