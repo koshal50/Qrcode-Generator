@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qrcode-generator"
+version = "0.1.0"
+description = "Simple Python QR code generator"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "qrcode>=7.4.2",
+  "Pillow>=10.0.0",
+]
