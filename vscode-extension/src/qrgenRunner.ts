@@ -3,42 +3,52 @@ import { exec, execSync } from "child_process";
 import * as path from "path";
 import * as fs from "fs";
 
+const IS_WIN = process.platform === "win32";
+
 /**
  * Discovers the best Python executable available on the system.
  * Checks workspace venv first, then system Python.
  */
 function findPython(): string {
-  const isWin = process.platform === "win32";
-
   // 1. Check workspace venv
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (workspaceFolders) {
     for (const folder of workspaceFolders) {
-      const venvPython = isWin
-        ? path.join(folder.uri.fsPath, "venv", "Scripts", "python.exe")
-        : path.join(folder.uri.fsPath, "venv", "bin", "python");
+      for (const venvName of ["venv", ".venv"]) {
+        const venvPython = IS_WIN
+          ? path.join(folder.uri.fsPath, venvName, "Scripts", "python.exe")
+          : path.join(folder.uri.fsPath, venvName, "bin", "python");
 
-      if (fs.existsSync(venvPython)) {
-        return `"${venvPython}"`;
-      }
-
-      // Also check .venv
-      const dotVenvPython = isWin
-        ? path.join(folder.uri.fsPath, ".venv", "Scripts", "python.exe")
-        : path.join(folder.uri.fsPath, ".venv", "bin", "python");
-
-      if (fs.existsSync(dotVenvPython)) {
-        return `"${dotVenvPython}"`;
+        if (fs.existsSync(venvPython)) {
+          return venvPython;
+        }
       }
     }
   }
 
   // 2. Fall back to system python
-  return isWin ? "python" : "python3";
+  return IS_WIN ? "python" : "python3";
 }
 
 /**
- * Run a shell command and return stdout, or null on failure.
+ * Given a python executable path, find the `qrgen` script in the same
+ * directory (i.e. the console_scripts entry point created by pip).
+ *
+ * Example: python at venv/Scripts/python.exe → venv/Scripts/qrgen.exe
+ */
+function findQrgenScript(pythonPath: string): string | null {
+  const dir = path.dirname(pythonPath);
+  const scriptName = IS_WIN ? "qrgen.exe" : "qrgen";
+  const scriptPath = path.join(dir, scriptName);
+
+  if (fs.existsSync(scriptPath)) {
+    return scriptPath;
+  }
+  return null;
+}
+
+/**
+ * Run a shell command synchronously and return stdout, or null on failure.
  */
 function tryExec(cmd: string, timeoutMs = 15000): string | null {
   try {
@@ -51,6 +61,13 @@ function tryExec(cmd: string, timeoutMs = 15000): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Quote a path for use in shell commands.
+ */
+function q(p: string): string {
+  return `"${p}"`;
 }
 
 export class QRGenRunner {
@@ -68,7 +85,7 @@ export class QRGenRunner {
 
     // Try importing the package — this works regardless of PATH issues
     const result = tryExec(
-      `${python} -c "import qrgen; print(qrgen.__version__)"`,
+      `${q(python)} -c "import qrgen; print(qrgen.__version__)"`,
       10000
     );
     return result !== null;
@@ -93,49 +110,65 @@ export class QRGenRunner {
     const choice = await vscode.window.showInformationMessage(
       message,
       { modal: true },
-      "Install",
-      "Cancel"
+      "Install"
     );
 
     return choice === "Install";
   }
 
   /**
-   * Install the CLI package and wait for completion.
+   * Install the CLI package using the integrated terminal so the user
+   * can see all install logs (cloning, downloading, installing).
+   * Then polls `checkCLI()` to detect when install finishes.
+   *
    * Returns true if the install succeeded.
    */
   async installCLI(): Promise<boolean> {
-    const installSource = this.resolveInstallSource();
+    const installCmd = this.resolveInstallSource();
 
-    // Show progress while installing
+    // Use the integrated terminal so the user sees all install output
+    const terminal =
+      vscode.window.activeTerminal ??
+      vscode.window.createTerminal("QRGen Install");
+    terminal.show();
+    terminal.sendText(installCmd);
+
+    // Poll until the package becomes importable (max ~2 minutes)
     return vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
-        title: "QRGen: Installing dependencies...",
-        cancellable: false,
+        title: "QRGen: Waiting for installation to finish…",
+        cancellable: true,
       },
-      async () => {
-        return new Promise<boolean>((resolve) => {
-          exec(installSource, { timeout: 120000 }, (error, stdout, stderr) => {
-            if (error) {
-              const errMsg =
-                stderr?.trim() || stdout?.trim() || error.message;
-              vscode.window.showErrorMessage(
-                `QRGen install failed: ${errMsg}`
-              );
-              resolve(false);
-              return;
-            }
-            resolve(true);
-          });
-        });
+      async (_progress, token) => {
+        const maxAttempts = 60; // 60 × 2s = 2 minutes
+        for (let i = 0; i < maxAttempts; i++) {
+          if (token.isCancellationRequested) {
+            return false;
+          }
+
+          // Wait 2 seconds between checks
+          await new Promise((r) => setTimeout(r, 2000));
+
+          const installed = await this.checkCLI();
+          if (installed) {
+            return true;
+          }
+        }
+
+        vscode.window.showErrorMessage(
+          "QRGen: Installation timed out. Check the terminal for errors " +
+            "and try running the command again."
+        );
+        return false;
       }
     );
   }
 
   /**
    * Run the qrgen CLI to generate a QR code.
-   * Uses `python -m qrgen.cli` for reliability — avoids PATH issues.
+   * Uses the `qrgen` script from the same directory as the discovered
+   * Python (the console_scripts entry point installed by pip).
    * Returns the absolute path to the generated image.
    */
   async generate(data: string, outputDir?: string): Promise<string> {
@@ -143,8 +176,22 @@ export class QRGenRunner {
     const filename = `qrcode_${timestamp}.png`;
     const python = this.pythonPath || findPython();
 
-    // Build command using python -m so we don't depend on PATH
-    let cmd = `${python} -m qrgen "${data}" -o "${filename}"`;
+    // Find the qrgen script in the same directory as the Python executable
+    const qrgenScript = findQrgenScript(python);
+
+    let cmd: string;
+    if (qrgenScript) {
+      // Use the console_scripts entry point directly
+      cmd = `${q(qrgenScript)} "${data}" -o "${filename}"`;
+    } else {
+      // Fallback: invoke via python -c (works even without __main__.py)
+      cmd =
+        `${q(python)} -c "` +
+        `import sys; sys.argv = ['qrgen'] + sys.argv[1:]; ` +
+        `from qrgen.cli import main; main()" ` +
+        `"${data}" -o "${filename}"`;
+    }
+
     if (outputDir) {
       cmd += ` -d "${outputDir}"`;
     }
@@ -171,7 +218,6 @@ export class QRGenRunner {
 
         if (match && match[1]) {
           const cleanPath = match[1].trim();
-          // Verify the file actually exists
           if (fs.existsSync(cleanPath)) {
             resolve(cleanPath);
             return;
@@ -185,17 +231,12 @@ export class QRGenRunner {
             resolve(fallbackPath);
             return;
           }
-        }
-
-        // Last resort: check CWD/output
-        const cwdFallback = path.join(
-          outputDir || process.cwd(),
-          "output",
-          filename
-        );
-        if (fs.existsSync(cwdFallback)) {
-          resolve(cwdFallback);
-          return;
+          // Check output/ subdirectory (CLI default)
+          const subDirPath = path.join(outputDir, "output", filename);
+          if (fs.existsSync(subDirPath)) {
+            resolve(subDirPath);
+            return;
+          }
         }
 
         reject(
@@ -214,11 +255,11 @@ export class QRGenRunner {
    * 1. Local workspace — if pyproject.toml with qrgen is found, install from there
    * 2. GitHub repo — fallback to installing from the remote repo
    *
-   * Always uses the discovered Python's pip to avoid PATH issues.
+   * Always uses the discovered Python's -m pip to avoid PATH issues.
    */
   private resolveInstallSource(): string {
     const python = this.pythonPath || findPython();
-    const pipCmd = `${python} -m pip`;
+    const pipCmd = `${q(python)} -m pip`;
 
     // Check if the current workspace contains the qrgen package
     const workspaceFolders = vscode.workspace.workspaceFolders;
