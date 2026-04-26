@@ -64,10 +64,22 @@ function tryExec(cmd: string, timeoutMs = 15000): string | null {
 }
 
 /**
- * Quote a path for use in shell commands.
+ * Quote a path for cmd.exe (used by child_process.exec on Windows).
  */
-function q(p: string): string {
+function qCmd(p: string): string {
   return `"${p}"`;
+}
+
+/**
+ * Build a PowerShell-safe command string for running an executable.
+ * PowerShell needs the & (call) operator before a quoted path.
+ * Example: & "C:\path with spaces\python.exe" -m pip install ...
+ */
+function psCall(exePath: string, args: string): string {
+  if (IS_WIN && exePath.includes(" ")) {
+    return `& "${exePath}" ${args}`;
+  }
+  return `"${exePath}" ${args}`;
 }
 
 export class QRGenRunner {
@@ -84,8 +96,9 @@ export class QRGenRunner {
     this.pythonPath = python;
 
     // Try importing the package — this works regardless of PATH issues
+    // exec() uses cmd.exe on Windows, so standard quoting works
     const result = tryExec(
-      `${q(python)} -c "import qrgen; print(qrgen.__version__)"`,
+      `${qCmd(python)} -c "import qrgen; print(qrgen.__version__)"`,
       10000
     );
     return result !== null;
@@ -179,14 +192,15 @@ export class QRGenRunner {
     // Find the qrgen script in the same directory as the Python executable
     const qrgenScript = findQrgenScript(python);
 
+    // Build command — exec() uses cmd.exe on Windows, so standard quoting works
     let cmd: string;
     if (qrgenScript) {
       // Use the console_scripts entry point directly
-      cmd = `${q(qrgenScript)} "${data}" -o "${filename}"`;
+      cmd = `${qCmd(qrgenScript)} "${data}" -o "${filename}"`;
     } else {
       // Fallback: invoke via python -c (works even without __main__.py)
       cmd =
-        `${q(python)} -c "` +
+        `${qCmd(python)} -c "` +
         `import sys; sys.argv = ['qrgen'] + sys.argv[1:]; ` +
         `from qrgen.cli import main; main()" ` +
         `"${data}" -o "${filename}"`;
@@ -259,7 +273,10 @@ export class QRGenRunner {
    */
   private resolveInstallSource(): string {
     const python = this.pythonPath || findPython();
-    const pipCmd = `${q(python)} -m pip`;
+
+    // This command is sent to the integrated terminal (PowerShell on Windows)
+    // so we must use the & call operator for paths with spaces
+    const pipArgs = "-m pip";
 
     // Check if the current workspace contains the qrgen package
     const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -269,12 +286,12 @@ export class QRGenRunner {
         const qrgenPackagePath = path.join(folder.uri.fsPath, "qrgen");
 
         if (fs.existsSync(pyprojectPath) && fs.existsSync(qrgenPackagePath)) {
-          return `${pipCmd} install -e "${folder.uri.fsPath}"`;
+          return psCall(python, `${pipArgs} install -e "${folder.uri.fsPath}"`);
         }
       }
     }
 
     // Fallback: install from GitHub
-    return `${pipCmd} install git+https://github.com/koshal50/Qrcode-Generator.git`;
+    return psCall(python, `${pipArgs} install git+https://github.com/koshal50/Qrcode-Generator.git`);
   }
 }
