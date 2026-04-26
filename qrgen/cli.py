@@ -164,3 +164,7 @@ def main() -> None:
     except Exception as e:
         print(f"  {Fore.RED}x Unexpected error:{Style.RESET_ALL} {e}\n")
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

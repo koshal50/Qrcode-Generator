@@ -144,7 +144,7 @@ export class QRGenRunner {
     const python = this.pythonPath || findPython();
 
     // Build command using python -m so we don't depend on PATH
-    let cmd = `${python} -m qrgen.cli "${data}" -o "${filename}"`;
+    let cmd = `${python} -m qrgen "${data}" -o "${filename}"`;
     if (outputDir) {
       cmd += ` -d "${outputDir}"`;
     }
