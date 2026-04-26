@@ -9,7 +9,7 @@ export function activate(context: vscode.ExtensionContext) {
     "qrgen.generateQR",
     async () => {
       // Step 1: Check if CLI is installed
-      const installed = await runner.checkCLI();
+      let installed = await runner.checkCLI();
 
       if (!installed) {
         // Step 2: Show dependency preview
@@ -18,15 +18,28 @@ export function activate(context: vscode.ExtensionContext) {
           return;
         }
 
-        // Step 3: Install flow
-        runner.installCLI();
+        // Step 3: Install and wait for it to finish
+        const success = await runner.installCLI();
+        if (!success) {
+          return; // Error message already shown by installCLI
+        }
+
+        // Step 4: Verify install succeeded
+        installed = await runner.checkCLI();
+        if (!installed) {
+          vscode.window.showErrorMessage(
+            "QRGen: Installation completed but the package could not be detected. " +
+            "Please try restarting VS Code and running the command again."
+          );
+          return;
+        }
+
         vscode.window.showInformationMessage(
-          "Installing QRGen CLI... Please wait for the terminal to finish, then re-run the command."
+          "QRGen CLI installed successfully!"
         );
-        return;
       }
 
-      // Step 4: Get input from user
+      // Step 5: Get input from user
       const input = await vscode.window.showInputBox({
         prompt: "Enter URL or text to encode as QR code",
         placeHolder: "https://example.com",
@@ -42,13 +55,11 @@ export function activate(context: vscode.ExtensionContext) {
         return; // User cancelled
       }
 
-      // Step 5: Determine output directory
+      // Step 6: Determine output directory
       const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-      const outputDir = workspaceFolder
-        ? `${workspaceFolder}`
-        : undefined;
+      const outputDir = workspaceFolder || undefined;
 
-      // Step 6: Generate QR code
+      // Step 7: Generate QR code
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
@@ -59,7 +70,7 @@ export function activate(context: vscode.ExtensionContext) {
           try {
             const filePath = await runner.generate(input, outputDir);
 
-            // Step 7: Show result in webview
+            // Step 8: Show result in webview
             QRPreviewPanel.show(context, filePath, input);
 
             vscode.window.showInformationMessage(
