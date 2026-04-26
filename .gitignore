@@ -1,0 +1,30 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+
+# Output QR codes
+output/
+
+# IDE
+.vscode/
+.idea/
+
+# Node / VS Code Extension
+node_modules/
+out/
+*.vsix
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,51 @@
+{
+  "name": "qrgen-qr-code-generator",
+  "displayName": "QRGen - QR Code Generator",
+  "description": "Generate QR codes instantly from VS Code. Enter a URL or text, and get a styled QR code preview with download option.",
+  "version": "1.0.0",
+  "publisher": "koshal50",
+  "author": {
+    "name": "Koshal Bonde"
+  },
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/koshal50/Qrcode-Generator"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "qr",
+    "qrcode",
+    "generator",
+    "barcode",
+    "url"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "qrgen.generateQR",
+        "title": "Generate QR Code",
+        "category": "QRGen"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  }
+}

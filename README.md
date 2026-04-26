@@ -1,98 +1,150 @@
-# QRcode-Generator
+# QRGen — CLI QR Code Generator
 
-A simple **Python** QR code generator that creates **permanent (static) QR codes** and saves them in the `output/` folder.
+A cross-platform command-line tool to generate QR codes directly from your terminal. Works on **Windows**, **macOS**, and **Linux**.
 
-- Generated QR codes are saved in: `output/`
-- A **demo QR code** is also included inside the `output/` folder.
+```
+   ██████╗ ██████╗  ██████╗ ███████╗███╗   ██╗
+  ██╔═══██╗██╔══██╗██╔════╝ ██╔════╝████╗  ██║
+  ██║   ██║██████╔╝██║  ███╗█████╗  ██╔██╗ ██║
+  ██║▄▄ ██║██╔══██╗██║   ██║██╔══╝  ██║╚██╗██║
+  ╚██████╔╝██║  ██║╚██████╔╝███████╗██║ ╚████║
+   ╚══▀▀═╝ ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝
+```
+
+## Features
+
+- 🚀 **One command** — `qrgen <url>` and you're done
+- 🎨 **Custom colors** — set fill and background colors
+- 📐 **Adjustable size** — control box size and border width
+- 🛡️ **Error correction** — choose from L, M, Q, H levels
+- 🖥️ **Cross-platform** — Windows, macOS, Linux
+- 🎯 **Zero config** — works out of the box
 
 ---
 
-## Requirements
-- Python **3.9+** (as defined in `pyproject.toml`)
+## Installation
 
----
+### Prerequisites
 
-## Setup (from `pyproject.toml`)
+- **Python 3.9+** installed on your system
+- **pip** (comes with Python)
 
-This project uses **setuptools** via `pyproject.toml` (not Poetry).
+### Windows
 
-### 1) Clone the repository
-```bash
+```powershell
+# Clone the repository
 git clone https://github.com/koshal50/Qrcode-Generator.git
-```
-
-### 2) Go into the project folder
-```bash
 cd Qrcode-Generator
+
+# Create virtual environment (optional but recommended)
+python -m venv venv
+venv\Scripts\activate
+
+# Install the CLI tool
+pip install .
 ```
-
-### If there is an error while changing the directory
-Try this command exactly (as noted):
-```bash
-cd "Qrcode-Generator"
-```
-
-> Note: The folder name must match the actual folder name on your machine. If it doesn’t, list folders and `cd` into the correct one.
-
----
-
-## Create a virtual environment (recommended)
 
 ### macOS / Linux
+
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-```
+# Clone the repository
+git clone https://github.com/koshal50/Qrcode-Generator.git
+cd Qrcode-Generator
 
-### Windows (PowerShell)
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-```
+# Create virtual environment (optional but recommended)
+python3 -m venv venv
+source venv/bin/activate
 
----
-
-## Install dependencies
-
-### install from `pyproject.toml`
-This installs the dependencies (`qrcode`, `Pillow`) and installs the package locally.
-```bash
+# Install the CLI tool
 pip install .
 ```
 
-## Run the project
+After installation, the `qrgen` command is available globally in your terminal (or within the active virtual environment).
 
-The script to run is:
+---
+
+## Usage
+
+### Basic Usage
 
 ```bash
-python generate_qr.py
+# Generate a QR code for a URL
+qrgen https://example.com
+
+# Generate a QR code for any text
+qrgen "Hello, World!"
+```
+
+### Custom Output
+
+```bash
+# Save with a custom filename
+qrgen https://example.com -o mycode.png
+
+# Save to a specific directory
+qrgen https://example.com -d ~/Desktop
+```
+
+### Styling
+
+```bash
+# Custom colors
+qrgen https://example.com --fill blue --bg yellow
+
+# Custom size and border
+qrgen https://example.com --size 15 --border 2
+
+# High error correction (good for printing)
+qrgen https://example.com --ec H
+```
+
+### All Options
+
+```bash
+# Combine everything
+qrgen https://example.com -o logo.png -d ~/Desktop --fill darkblue --bg lightyellow --size 12 --border 3 --ec H
 ```
 
 ---
 
-## Output
-- All generated QR codes are written to the **`output/`** folder.
-- A **demo QR code** is present inside `output/`.
+## CLI Reference
+
+```
+qrgen <data> [options]
+```
+
+| Option | Short | Description | Default |
+|---|---|---|---|
+| `data` | | URL or text to encode (required) | — |
+| `--output` | `-o` | Custom output filename | `qrcodeN.png` |
+| `--dir` | `-d` | Output directory | `./output` |
+| `--fill` | | QR code color | `black` |
+| `--bg` | | Background color | `white` |
+| `--size` | | Box size in pixels | `10` |
+| `--border` | | Border width in boxes | `4` |
+| `--ec` | | Error correction: L, M, Q, H | `M` |
+| `--version` | `-v` | Show version info | — |
+| `--help` | `-h` | Show help message | — |
+
+### Error Correction Levels
+
+| Level | Recovery | Best For |
+|---|---|---|
+| **L** | ~7% | Clean digital displays |
+| **M** | ~15% | General purpose (default) |
+| **Q** | ~25% | Slightly damaged codes |
+| **H** | ~30% | Printed materials, logos |
 
 ---
 
-## Troubleshooting
+## Uninstall
 
-### Module not found / dependencies not installed
-Make sure your virtual environment is activated, then run:
 ```bash
-pip install .
-```
-
-### Still having directory issues
-If `cd Qrcode-Generator` fails, try:
-```bash
-cd "Qrcode-Generator"
+pip uninstall qrcode-generator
 ```
 
 ---
 
 ## License
+
 This project is licensed under the **MIT License** — see the `LICENSE` file for details.
