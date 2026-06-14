@@ -29,7 +29,25 @@ A cross-platform command-line tool to generate QR codes directly from your termi
 - **Python 3.9+** installed on your system
 - **pip** (comes with Python)
 
-### Windows
+### Install from PyPI (Recommended)
+
+```bash
+pip install qrgen-cli
+```
+
+That's it! The `qrgen` command is now available in your terminal.
+
+### Verify Installation
+
+```bash
+# Check package details (author, version, license, etc.)
+pip show qrgen-cli
+
+# Check version
+qrgen --version
+```
+#####                         OR              
+#### Windows
 
 ```powershell
 # Clone the repository
@@ -44,7 +62,7 @@ venv\Scripts\activate
 pip install .
 ```
 
-### macOS / Linux
+#### macOS / Linux
 
 ```bash
 # Clone the repository
@@ -59,9 +77,12 @@ source venv/bin/activate
 pip install .
 ```
 
+</details>
+
 After installation, the `qrgen` command is available globally in your terminal (or within the active virtual environment).
 
 ---
+
 
 ## Usage
 
@@ -140,7 +161,7 @@ qrgen <data> [options]
 ## Uninstall
 
 ```bash
-pip uninstall qrcode-generator
+pip uninstall qrgen-cli
 ```
 
 ---
