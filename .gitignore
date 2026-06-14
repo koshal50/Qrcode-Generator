@@ -20,11 +20,6 @@ output/
 .vscode/
 .idea/
 
-# Node / VS Code Extension
-node_modules/
-out/
-*.vsix
-
 # OS files
 .DS_Store
 Thumbs.db
